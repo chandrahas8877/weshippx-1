@@ -1364,7 +1364,7 @@ footer { background:rgba(255,255,255,0.015);border-top:1px solid var(--border);p
 </footer>
 
 <script>
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxkrvatHg-m-BQI8zPmqgg1XyxYK-5XdOMYIkcXGvbu/dev';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw4IjP8E5yrmTr2Y2peRVSnsxhfVz8txnE9GeS0n46gBsnw-6yVB4WyHlqUGDjMCOCaSw/exec';
 
 /* ── CURSOR ── */
 const cursor = document.getElementById('cursor');
@@ -1545,6 +1545,7 @@ async function submitForm() {
   const btn = document.getElementById('submitBtn');
   btn.disabled = true;
   btn.innerHTML = '<div class="spinner"></div> Bhej rahe hain...';
+
   const payload = {
     Name: formData.name,
     Mobile: formData.mobile,
@@ -1553,15 +1554,61 @@ async function submitForm() {
     Occupation: formData.occupation,
     Timestamp: new Date().toLocaleString('en-IN',{timeZone:'Asia/Kolkata'})
   };
+
+  // Method 1: Form submit via hidden iframe (works with Google Apps Script)
   try {
-    await fetch(APPS_SCRIPT_URL, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = APPS_SCRIPT_URL;
+    form.target = 'hidden_iframe';
+    form.style.display = 'none';
+
+    // Send all data as a single JSON field
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'data';
+    input.value = JSON.stringify(payload);
+    form.appendChild(input);
+
+    // Also send individual fields for easier Apps Script reading
+    Object.keys(payload).forEach(key => {
+      const f = document.createElement('input');
+      f.type = 'hidden';
+      f.name = key;
+      f.value = payload[key];
+      form.appendChild(f);
     });
-    showSuccess();
+
+    // Create hidden iframe to catch response
+    let iframe = document.getElementById('hidden_iframe');
+    if (!iframe) {
+      iframe = document.createElement('iframe');
+      iframe.name = 'hidden_iframe';
+      iframe.id = 'hidden_iframe';
+      iframe.style.display = 'none';
+      document.body.appendChild(iframe);
+    }
+
+    document.body.appendChild(form);
+    form.submit();
+    document.body.removeChild(form);
+
+    // Show success after short delay
+    setTimeout(showSuccess, 1500);
+
   } catch(err) {
+    // Fallback: try fetch with no-cors
+    try {
+      await fetch(APPS_SCRIPT_URL + '?Name=' + encodeURIComponent(payload.Name) +
+        '&Mobile=' + encodeURIComponent(payload.Mobile) +
+        '&Email=' + encodeURIComponent(payload.Email) +
+        '&City=' + encodeURIComponent(payload.City) +
+        '&Occupation=' + encodeURIComponent(payload.Occupation) +
+        '&Timestamp=' + encodeURIComponent(payload.Timestamp), {
+        method: 'GET',
+        mode: 'no-cors'
+      });
+    } catch(e) {}
     showSuccess();
   }
 }
